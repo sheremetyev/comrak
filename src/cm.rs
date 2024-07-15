@@ -1,7 +1,7 @@
 use crate::ctype::{isalpha, isdigit, ispunct, isspace};
 use crate::nodes::{
     AstNode, ListDelimType, ListType, NodeCodeBlock, NodeHeading, NodeHtmlBlock, NodeLink,
-    NodeMath, NodeTable, NodeValue, NodeWikiLink,
+    NodeMath, NodeMathBlock, NodeTable, NodeValue, NodeWikiLink,
 };
 use crate::nodes::{NodeList, TableAlignment};
 #[cfg(feature = "shortcodes")]
@@ -399,6 +399,7 @@ impl<'a, 'o, 'c> CommonMarkFormatter<'a, 'o, 'c> {
             NodeValue::Underline => self.format_underline(),
             NodeValue::SpoileredText => self.format_spoiler(),
             NodeValue::EscapedTag(ref net) => self.format_escaped_tag(net),
+            NodeValue::MathBlock(ref nmb) => self.format_math_block(node, nmb, entering),
         };
         true
     }
@@ -443,7 +444,7 @@ impl<'a, 'o, 'c> CommonMarkFormatter<'a, 'o, 'c> {
             if match node.next_sibling() {
                 Some(next_sibling) => matches!(
                     next_sibling.data.borrow().value,
-                    NodeValue::CodeBlock(..) | NodeValue::List(..)
+                    NodeValue::CodeBlock(..) | NodeValue::List(..) | NodeValue::MathBlock(..)
                 ),
                 _ => false,
             } {
@@ -872,6 +873,42 @@ impl<'a, 'o, 'c> CommonMarkFormatter<'a, 'o, 'c> {
             self.output(start_fence.as_bytes(), false, Escaping::Literal);
             self.output(literal, allow_wrap, Escaping::Literal);
             self.output(end_fence.as_bytes(), false, Escaping::Literal);
+        }
+    }
+
+    fn format_math_block(&mut self, node: &'a AstNode<'a>, nmb: &NodeMathBlock, entering: bool) {
+        if entering {
+            let literal = nmb.literal.as_bytes();
+            let fence_char = "$";
+            let fence_length = 2;
+            let first_in_list_item = node.previous_sibling().is_none()
+                && match node.parent() {
+                    Some(parent) => {
+                        matches!(
+                            parent.data.borrow().value,
+                            NodeValue::Item(..) | NodeValue::TaskItem(..)
+                        )
+                    }
+                    _ => false,
+                };
+
+            if !first_in_list_item {
+                self.blankline();
+            }
+
+            for _ in 0..fence_length {
+                write!(self, "{}", fence_char).unwrap();
+            }
+
+            self.cr();
+            self.write_all(literal).unwrap();
+            self.cr();
+
+            for _ in 0..fence_length {
+                write!(self, "{}", fence_char).unwrap();
+            }
+
+            self.blankline();
         }
     }
 }

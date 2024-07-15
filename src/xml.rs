@@ -283,6 +283,13 @@ impl<'o, 'c> XmlFormatter<'o, 'c> {
                 NodeValue::EscapedTag(ref data) => {
                     self.output.write_all(data.as_bytes())?;
                 }
+                NodeValue::MathBlock(ref nmb) => {
+                    self.output.write_all(b" math_style=\"display\"")?;
+                    self.output.write_all(b" xml:space=\"preserve\">")?;
+                    self.escape(nmb.literal.as_bytes())?;
+                    write!(self.output, "</{}", ast.value.xml_node_name())?;
+                    was_literal = true;
+                }
             }
 
             if node.first_child().is_some() {
