@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 #[cfg(feature = "shortcodes")]
 pub use crate::parser::shortcodes::NodeShortCode;
 
-pub use crate::parser::math::NodeMath;
+pub use crate::parser::math::{NodeMath, NodeMathBlock};
 pub use crate::parser::multiline_block_quote::NodeMultilineBlockQuote;
 
 /// The core AST node enum.
@@ -160,12 +160,20 @@ pub enum NodeValue {
     ///
     /// Inline math $1 + 2$ and $`1 + 2`$
     ///
-    /// Display math $$1 + 2$$ and
+    /// Display math $$1 + 2$$
+    Math(NodeMath),
+
+    /// **Block**. A math block.  Contains raw text which is not parsed as Markdown.
+    /// Dollar math or code math
+    ///
     /// $$
     /// 1 + 2
     /// $$
     ///
-    Math(NodeMath),
+    /// ```math
+    /// 1 + 2
+    /// ```
+    MathBlock(NodeMathBlock),
 
     /// **Block**. A [multiline block quote](https://github.github.com/gfm/#block-quotes).  Spans multiple
     /// lines and contains other **blocks**.
@@ -433,6 +441,7 @@ impl NodeValue {
                 | NodeValue::TableCell
                 | NodeValue::TaskItem(..)
                 | NodeValue::MultilineBlockQuote(_)
+                | NodeValue::MathBlock(..)
         )
     }
 
@@ -467,7 +476,10 @@ impl NodeValue {
     pub(crate) fn accepts_lines(&self) -> bool {
         matches!(
             *self,
-            NodeValue::Paragraph | NodeValue::Heading(..) | NodeValue::CodeBlock(..)
+            NodeValue::Paragraph
+                | NodeValue::Heading(..)
+                | NodeValue::CodeBlock(..)
+                | NodeValue::MathBlock(..)
         )
     }
 
@@ -508,6 +520,7 @@ impl NodeValue {
             NodeValue::ShortCode(_) => "shortcode",
             NodeValue::MultilineBlockQuote(_) => "multiline_block_quote",
             NodeValue::Escaped => "escaped",
+            NodeValue::MathBlock(..) => "math_block",
             NodeValue::Math(..) => "math",
             NodeValue::WikiLink(..) => "wikilink",
             NodeValue::Underline => "underline",

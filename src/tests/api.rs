@@ -268,5 +268,9 @@ fn exercise_full_api() {
         nodes::NodeValue::EscapedTag(data) => {
             let _: &String = data;
         }
+        nodes::NodeValue::MathBlock(mb) => {
+            let _: usize = mb.fence_offset;
+            let _: String = mb.literal;
+        }
     }
 }
